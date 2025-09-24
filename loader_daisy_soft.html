@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Loader Daisy Soft</title>
+<style>
+  body {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+  }
+
+  .stage {
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .flower {
+    position:relative;
+    width:140px;
+    height:140px;
+  }
+
+  .petal {
+    position:absolute;
+    left:50%;
+    top:50%;
+    /* Wrapper ở đúng tâm; xoay theo vòng */
+    transform: translate(-50%,-50%) rotate(var(--r,0deg));
+  }
+
+  .blade {
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:26px;
+    height:70px;
+    background:#fff;
+    border-radius: 40% 40% 40% 40%;
+    /* Gốc cánh đặt tại tâm, phát triển ra ngoài theo trục Y */
+    transform: translate(-50%, 0);
+    transform-origin:50% 0%;
+  }
+
+  .blade::after {
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    border:1px solid #000; /* viền đen mảnh kiểu logo GD */
+  }
+
+  .center {
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    /* Nhụy hoa: dùng radial-gradient để trông căng mọng hơn */
+    background: radial-gradient(50% 50% at 45% 40%, #fde047 35%, #facc15 60%, #eab308 85%);
+    border:1px solid #000;
+    box-shadow:
+      inset 0 2px 4px rgba(0,0,0,0.25),
+      0 0 0 0 rgba(250, 204, 21, 0.0); /* sẽ được GSAP animate thành glow */
+  }
+
+  /* Vòng sáng phụ để tăng cảm giác phát quang nhẹ */
+  .center::after {
+    content:"";
+    position:absolute;
+    inset:-8px;
+    border-radius:50%;
+    pointer-events:none;
+  }
+
+  /* 8 cánh, xoay quanh */
+  .petal:nth-child(1){ --r:0deg; }
+  .petal:nth-child(2){ --r:45deg; }
+  .petal:nth-child(3){ --r:90deg; }
+  .petal:nth-child(4){ --r:135deg; }
+  .petal:nth-child(5){ --r:180deg; }
+  .petal:nth-child(6){ --r:225deg; }
+  .petal:nth-child(7){ --r:270deg; }
+  .petal:nth-child(8){ --r:315deg; }
+
+  /* GSAP sẽ điều khiển chuyển động, không dùng keyframes CSS */
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="flower">
+      <div class="petal"><div class="blade"></div></div>
+      <div class="petal"><div class="blade"></div></div>
+      <div class="petal"><div class="blade"></div></div>
+      <div class="petal"><div class="blade"></div></div>
+      <div class="petal"><div class="blade"></div></div>
+      <div class="petal"><div class="blade"></div></div>
+      <div class="petal"><div class="blade"></div></div>
+      <div class="petal"><div class="blade"></div></div>
+      <div class="center"><div class="glow"></div></div>
+    </div>
+    <div class="loading" aria-live="polite" style="
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      font-size:1.2rem;
+      font-weight:500;
+      color:#111;
+    ">LOADING</div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script>
+    const blades = document.querySelectorAll('.blade');
+    gsap.set(blades, { y: 0, scale: 1, opacity: 1, force3D: true });
+
+    // Nhụy hoa
+    const center = document.querySelector('.center');
+    const glow = document.querySelector('.center .glow');
+    const label = document.querySelector('.loading');
+    // Khởi tạo để tránh nhảy trạng thái khi animate boxShadow/filter
+    gsap.set(center, { scale: 1, y: 0, rotation: 0, force3D: true });
+    gsap.set(glow, { opacity: 0.18, scale: 0.86 });
+    gsap.set(label, { opacity: 0.9, letterSpacing: '0.4px', scale: 1 });
+    // Đung đưa nhẹ cho mềm mại, xoay quanh gần gốc cánh
+    blades.forEach((p, i) => {
+      gsap.to(p, {
+        rotation: `+=${i % 2 ? 2 : -2}`,
+        transformOrigin: '50% 100%',
+        repeat: -1,
+        yoyo: true,
+        duration: gsap.utils.random(1.8, 2.6),
+        ease: 'sine.inOut',
+        delay: i * 0.06,
+        force3D: true
+      });
+    });
+
+    // Timeline điều phối rụng -> mọc, lặp vô hạn
+    const tl = gsap.timeline({ repeat: -1, smoothChildTiming: true });
+    // Pha rụng (drop)
+    tl.addLabel('drop')
+      .to(blades, {
+        y: 110,
+        opacity: 0,
+        scale: 0.4,
+        duration: 0.9,
+        ease: 'power2.in',
+        stagger: 0.08,
+        overwrite: 'auto',
+        force3D: true
+      }, 'drop')
+      .to(center, {
+        scale: 0.94,
+        y: 1,
+        duration: 0.9,
+        ease: 'power2.in',
+        overwrite: 'auto'
+      }, 'drop+=0.02')
+      .to(glow, {
+        opacity: 0.12,
+        scale: 0.85,
+        duration: 0.9,
+        ease: 'power2.in',
+        overwrite: 'auto'
+      }, 'drop+=0.02')
+      .to(label, {
+        opacity: 0.7,
+        letterSpacing: '0.2px',
+        scale: 0.98,
+        duration: 0.9,
+        ease: 'power2.in',
+        overwrite: 'auto'
+      }, 'drop+=0.04')
+      // Giữ nhịp 1 chút để tránh giật khi chuyển pha
+      .to({}, { duration: 0.12 });
+
+    // Pha mọc lại (regrow)
+    tl.addLabel('regrow')
+      .fromTo(blades,
+        { y: -16, opacity: 0, scale: 0.2, force3D: true },
+        { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: 'sine.out', stagger: 0.07, overwrite: 'auto', force3D: true, immediateRender: false },
+        'regrow')
+      .fromTo(center,
+        { scale: 0.92, y: 1 },
+        'regrow+=0.02')
+      .fromTo(glow,
+        { opacity: 0.12, scale: 0.85 },
+        { opacity: 0.38, scale: 1.08, duration: 0.6, ease: 'sine.out', overwrite: 'auto', immediateRender: false },
+        'regrow+=0.02')
+      .to(label, {
+        opacity: 1.0,
+        letterSpacing: '0.6px',
+        scale: 1.04,
+        duration: 0.6,
+        ease: 'sine.out',
+        overwrite: 'auto'
+      }, 'regrow+=0.04')
+      // Giữ nhịp 1 chút trước khi lặp lại
+      .to({}, { duration: 0.18 });
+
+    // Micro sway cho nhụy: rất nhẹ để ăn khớp cảm giác đung đưa tổng thể
+    gsap.to(center, {
+      transformOrigin: '50% 50%',
+      duration: 2.2,
+      ease: 'sine.inOut',
+      repeat: -1,
+      yoyo: true
+    });
+
+    // Breathing của label đã được gắn vào timeline để ăn nhịp drop/regrow
+  </script>
+</body>
+</html>
