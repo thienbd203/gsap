@@ -54,9 +54,21 @@
     width:28px;
     height:28px;
     border-radius:50%;
-    background:#facc15;
-    border:2px solid #000;
-    box-shadow:inset 0 2px 4px rgba(0,0,0,0.25);
+    /* Nhụy hoa: dùng radial-gradient để trông căng mọng hơn */
+    background: radial-gradient(50% 50% at 45% 40%, #fde047 35%, #facc15 60%, #eab308 85%);
+    border:1px solid #000;
+    box-shadow:
+      inset 0 2px 4px rgba(0,0,0,0.25),
+      0 0 0 0 rgba(250, 204, 21, 0.0); /* sẽ được GSAP animate thành glow */
+  }
+
+  /* Vòng sáng phụ để tăng cảm giác phát quang nhẹ */
+  .center::after {
+    content:"";
+    position:absolute;
+    inset:-8px;
+    border-radius:50%;
+    pointer-events:none;
   }
 
   /* 8 cánh, xoay quanh */
@@ -82,7 +94,7 @@
     <div class="petal"><div class="blade"></div></div>
     <div class="petal"><div class="blade"></div></div>
     <div class="petal"><div class="blade"></div></div>
-    <div class="center"></div>
+    <div class="center"><div class="glow"></div></div>
   </div>
   <!-- GSAP CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -91,10 +103,17 @@
     // Trạng thái đầu vào rõ ràng để GSAP gộp transform an toàn
     gsap.set(blades, { y: 0, scale: 1, opacity: 1, force3D: true });
 
+    // Nhụy hoa
+    const center = document.querySelector('.center');
+    const glow = document.querySelector('.center .glow');
+    // Khởi tạo để tránh nhảy trạng thái khi animate boxShadow/filter
+    gsap.set(center, { scale: 1, y: 0, rotation: 0, force3D: true });
+    gsap.set(glow, { opacity: 0.18, scale: 0.86 });
+
     // Đung đưa nhẹ cho mềm mại, xoay quanh gần gốc cánh
     blades.forEach((p, i) => {
       gsap.to(p, {
-        rotation: `+=${i % 2 ? 2.5 : -2.5}`,
+        rotation: `+=${i % 2 ? 2 : -2}`,
         transformOrigin: '50% 100%',
         repeat: -1,
         yoyo: true,
@@ -105,9 +124,11 @@
       });
     });
 
-    function dropThenRegrow() {
-      // Rụng tuần tự
-      gsap.to(blades, {
+    // Timeline điều phối rụng -> mọc, lặp vô hạn
+    const tl = gsap.timeline({ repeat: -1, smoothChildTiming: true });
+    // Pha rụng (drop)
+    tl.addLabel('drop')
+      .to(blades, {
         y: 110,
         opacity: 0,
         scale: 0.4,
@@ -115,21 +136,51 @@
         ease: 'power2.in',
         stagger: 0.08,
         overwrite: 'auto',
-        force3D: true,
-        onComplete: regrow
-      });
-    }
+        force3D: true
+      }, 'drop')
+      .to(center, {
+        scale: 0.94,
+        y: 1,
+        duration: 0.9,
+        ease: 'power2.in',
+        overwrite: 'auto'
+      }, 'drop+=0.02')
+      .to(glow, {
+        opacity: 0.12,
+        scale: 0.85,
+        duration: 0.9,
+        ease: 'power2.in',
+        overwrite: 'auto'
+      }, 'drop+=0.02')
+      // Giữ nhịp 1 chút để tránh giật khi chuyển pha
+      .to({}, { duration: 0.12 });
 
-    function regrow() {
-      // Mọc lại từ trong ra
-      gsap.fromTo(blades,
+    // Pha mọc lại (regrow)
+    tl.addLabel('regrow')
+      .fromTo(blades,
         { y: -16, opacity: 0, scale: 0.2, force3D: true },
-        { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(1.6)', stagger: 0.07, overwrite: 'auto', force3D: true, onComplete: dropThenRegrow }
-      );
-    }
+        { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: 'sine.out', stagger: 0.07, overwrite: 'auto', force3D: true, immediateRender: false },
+        'regrow')
+      .fromTo(center,
+        { scale: 0.92, y: 1 },
+        { scale: 1.04, y: 0, duration: 0.6, ease: 'sine.out', overwrite: 'auto', immediateRender: false },
+        'regrow+=0.02')
+      .fromTo(glow,
+        { opacity: 0.12, scale: 0.85 },
+        { opacity: 0.38, scale: 1.08, duration: 0.6, ease: 'sine.out', overwrite: 'auto', immediateRender: false },
+        'regrow+=0.02')
+      // Giữ nhịp 1 chút trước khi lặp lại
+      .to({}, { duration: 0.18 });
 
-    // Bắt đầu vòng lặp
-    dropThenRegrow();
+    // Micro sway cho nhụy: rất nhẹ để ăn khớp cảm giác đung đưa tổng thể
+    gsap.to(center, {
+      rotation: 1.2,
+      transformOrigin: '50% 50%',
+      duration: 2.2,
+      ease: 'sine.inOut',
+      repeat: -1,
+      yoyo: true
+    });
   </script>
 </body>
 </html>
