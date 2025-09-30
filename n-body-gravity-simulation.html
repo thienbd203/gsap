@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô Phỏng Hệ Mặt Trời</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 100%);
+            overflow: hidden;
+            color: white;
+        }
+        #canvas {
+            display: block;
+            background: radial-gradient(ellipse at center, rgba(26, 26, 46, 0.8) 0%, rgba(10, 10, 15, 0.95) 100%);
+            cursor: grab;
+        }
+        #canvas:active { cursor: grabbing; }
+        .ui-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        .ui-panel:hover {
+            border-color: rgba(255, 215, 0, 0.5);
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
+        }
+        .controls-panel { top: 20px; left: 20px; max-width: 320px; }
+        .stats-panel { bottom: 20px; left: 20px; min-width: 250px; }
+        h2, h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            margin-bottom: 15px;
+        }
+        .control-group { margin-bottom: 15px; }
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+            color: #ccc;
+        }
+        .control-group input[type="range"] {
+            width: 100%;
+            accent-color: #ffd700;
+        }
+        .control-group button, .control-group select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid #ffd700;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            transition: all 0.3s ease;
+        }
+        .control-group button:hover {
+            background: rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        .value-display {
+            font-weight: bold;
+            color: #ffd700;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .checkbox-group input { margin-right: 10px; accent-color: #ffd700; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .stat-value {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="ui-panel controls-panel">
+        <h2>☀️ Hệ Mặt Trời</h2>
+        <div class="control-group">
+            <label>Tốc độ thời gian: <span id="timeSpeedValue" class="value-display">1.0x</span></label>
+            <input type="range" id="timeSpeed" min="0" max="5" step="0.1" value="1">
+        </div>
+        <div class="control-group">
+            <label>Lực hấp dẫn: <span id="gravityValue" class="value-display">1.0x</span></label>
+            <input type="range" id="gravityStrength" min="0.1" max="3" step="0.1" value="1">
+        </div>
+        <div class="control-group">
+            <label>Thu phóng: <span id="zoomValue" class="value-display">1.0x</span></label>
+            <input type="range" id="zoom" min="0.3" max="3" step="0.1" value="1">
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="showTrails" checked>
+            <label for="showTrails">Hiển thị quỹ đạo</label>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="showOrbits" checked>
+            <label for="showOrbits">Vòng quỹ đạo</label>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="showNames" checked>
+            <label for="showNames">Tên hành tinh</label>
+        </div>
+        <div class="control-group">
+            <button id="resetBtn">🔄 Khởi động lại</button>
+        </div>
+        <div class="control-group">
+            <button id="pauseBtn">⏸️ Tạm dừng</button>
+        </div>
+    </div>
+
+    <div class="ui-panel stats-panel">
+        <h3>📊 Thông số</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div>Hành tinh</div>
+                <div class="stat-value" id="bodyCount">9</div>
+            </div>
+            <div class="stat-item">
+                <div>FPS</div>
+                <div class="stat-value" id="fps">60</div>
+            </div>
+            <div class="stat-item">
+                <div>Thời gian</div>
+                <div class="stat-value" id="simTime">0</div>
+            </div>
+            <div class="stat-item">
+                <div>Năng lượng</div>
+                <div class="stat-value" id="energy">0</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        let timeSpeed = 1.0, gravityStrength = 1.0, zoom = 1.0;
+        let showTrails = true, showOrbits = true, showNames = true, isPaused = false;
+        let camera = { x: 0, y: 0 };
+        let isDragging = false, dragStart = {}, cameraStart = {};
+
+        const G = 1.0; // Simplified for visualization
+        let bodies = [], simulationTime = 0;
+        let frameCount = 0, lastTime = Date.now();
+
+        class Body {
+            constructor(name, mass, x, y, vx, vy, radius, color) {
+                Object.assign(this, { name, mass, x, y, vx, vy, radius, color });
+                this.trail = [];
+                this.fx = this.fy = 0;
+            }
+            update(dt) {
+                const ax = this.fx / this.mass, ay = this.fy / this.mass;
+                this.vx += ax * dt; this.vy += ay * dt;
+                this.x += this.vx * dt; this.y += this.vy * dt;
+                if (showTrails && frameCount % 3 === 0) {
+                    this.trail.push({ x: this.x, y: this.y });
+                    if (this.trail.length > 200) this.trail.shift();
+                }
+                this.fx = this.fy = 0;
+            }
+            draw() {
+                const sx = width/2 + (this.x - camera.x) * zoom;
+                const sy = height/2 + (this.y - camera.y) * zoom;
+                
+                // Draw trail
+                if (showTrails && this.trail.length > 1) {
+                    ctx.strokeStyle = this.color + '50';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(width/2 + (this.trail[0].x - camera.x) * zoom, height/2 + (this.trail[0].y - camera.y) * zoom);
+                    for (let i = 1; i < this.trail.length; i++) {
+                        ctx.lineTo(width/2 + (this.trail[i].x - camera.x) * zoom, height/2 + (this.trail[i].y - camera.y) * zoom);
+                    }
+                    ctx.stroke();
+                }
+                
+                // Draw body with glow
+                const r = Math.max(this.radius * zoom, 3);
+                const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 2.5);
+                grad.addColorStop(0, this.color);
+                grad.addColorStop(0.4, this.color + 'AA');
+                grad.addColorStop(1, this.color + '00');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(sx, sy, r * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(sx, sy, r, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw name
+                if (showNames) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 13px Rajdhani';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = 'black';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText(this.name, sx, sy - r - 8);
+                    ctx.shadowBlur = 0;
+                }
+            }
+        }
+
+        function calculateForces() {
+            // Chỉ tính lực từ Mặt Trời (body[0]) lên các hành tinh
+            // Không tính lực giữa các hành tinh để tránh va chạm trong 2D
+            const sun = bodies[0];
+            
+            for (let i = 1; i < bodies.length; i++) {
+                const planet = bodies[i];
+                const dx = sun.x - planet.x;
+                const dy = sun.y - planet.y;
+                const distSq = dx * dx + dy * dy;
+                const dist = Math.sqrt(distSq);
+                
+                if (dist < 1e-10) continue;
+                
+                // Lực hấp dẫn từ mặt trời lên hành tinh
+                const force = (G * gravityStrength * sun.mass * planet.mass) / distSq;
+                const fx = force * dx / dist;
+                const fy = force * dy / dist;
+                
+                planet.fx += fx;
+                planet.fy += fy;
+            }
+        }
+
+        // Orbital distances for reference
+        const orbits = [60, 110, 150, 230, 400, 550, 750, 900];
+        
+        function initSolarSystem() {
+            bodies = [];
+            const sunMass = 1000;
+            
+            // Hệ mặt trời với vận tốc quỹ đạo chính xác: v = sqrt(G*M/r)
+            bodies.push(new Body('Mặt Trời', sunMass, 0, 0, 0, 0, 30, '#FDB813'));
+            
+            // Tính vận tốc orbital chính xác cho mỗi hành tinh
+            const addPlanet = (name, mass, distance, radius, color) => {
+                const velocity = Math.sqrt(G * sunMass / distance);
+                bodies.push(new Body(name, mass, distance, 0, 0, velocity, radius, color));
+            };
+            
+            addPlanet('Sao Thủy', 0.3, 60, 5, '#8C7853');
+            addPlanet('Sao Kim', 0.8, 110, 7, '#FFC649');
+            addPlanet('Trái Đất', 1, 150, 8, '#4169E1');
+            addPlanet('Sao Hỏa', 0.5, 230, 6, '#CD5C5C');
+            addPlanet('Sao Mộc', 300, 400, 22, '#DAA520');
+            addPlanet('Sao Thổ', 100, 550, 18, '#F4A460');
+            addPlanet('Sao Thiên Vương', 15, 750, 14, '#4FD0E0');
+            addPlanet('Sao Hải Vương', 17, 900, 14, '#4169E1');
+            
+            document.getElementById('bodyCount').textContent = bodies.length;
+        }
+        
+        function drawOrbits() {
+            if (!showOrbits) return;
+            const sunX = width / 2 - camera.x * zoom;
+            const sunY = height / 2 - camera.y * zoom;
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            
+            orbits.forEach(radius => {
+                ctx.beginPath();
+                ctx.arc(sunX, sunY, radius * zoom, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+        }
+
+        function calculateEnergy() {
+            let k = 0, p = 0;
+            bodies.forEach(b => k += 0.5 * b.mass * (b.vx * b.vx + b.vy * b.vy));
+            for (let i = 0; i < bodies.length; i++) {
+                for (let j = i + 1; j < bodies.length; j++) {
+                    const dx = bodies[j].x - bodies[i].x, dy = bodies[j].y - bodies[i].y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 0) p -= (G * bodies[i].mass * bodies[j].mass) / dist;
+                }
+            }
+            return (k + p) / 1000;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!isPaused) {
+                const dt = 0.1 * timeSpeed;
+                calculateForces();
+                bodies.forEach(b => b.update(dt));
+                simulationTime += dt;
+            }
+            
+            // Clear canvas hoàn toàn - không fade
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, width, height);
+            
+            drawOrbits();
+            bodies.forEach(b => b.draw());
+            
+            frameCount++;
+            const now = Date.now();
+            if (now - lastTime >= 1000) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                lastTime = now;
+            }
+            document.getElementById('simTime').textContent = Math.floor(simulationTime);
+            document.getElementById('energy').textContent = calculateEnergy().toFixed(2);
+        }
+
+        document.getElementById('timeSpeed').addEventListener('input', e => {
+            timeSpeed = parseFloat(e.target.value);
+            document.getElementById('timeSpeedValue').textContent = timeSpeed.toFixed(1) + 'x';
+        });
+        document.getElementById('gravityStrength').addEventListener('input', e => {
+            gravityStrength = parseFloat(e.target.value);
+            document.getElementById('gravityValue').textContent = gravityStrength.toFixed(1) + 'x';
+        });
+        document.getElementById('zoom').addEventListener('input', e => {
+            const newZoom = parseFloat(e.target.value);
+            gsap.to(window, { zoom: newZoom, duration: 0.5, onUpdate: () => {
+                zoom = window.zoom;
+                document.getElementById('zoomValue').textContent = zoom.toFixed(1) + 'x';
+            }});
+        });
+        document.getElementById('showTrails').addEventListener('change', e => showTrails = e.target.checked);
+        document.getElementById('showOrbits').addEventListener('change', e => showOrbits = e.target.checked);
+        document.getElementById('showNames').addEventListener('change', e => showNames = e.target.checked);
+        
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            initSolarSystem();
+            simulationTime = 0;
+            gsap.to(camera, { x: 0, y: 0, duration: 1, ease: "power2.out" });
+        });
+        
+        document.getElementById('pauseBtn').addEventListener('click', e => {
+            isPaused = !isPaused;
+            e.target.textContent = isPaused ? '▶️ Tiếp tục' : '⏸️ Tạm dừng';
+        });
+
+        canvas.addEventListener('mousedown', e => {
+            isDragging = true;
+            dragStart = { x: e.clientX, y: e.clientY };
+            cameraStart = { x: camera.x, y: camera.y };
+        });
+        canvas.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            camera.x = cameraStart.x - (e.clientX - dragStart.x) / zoom;
+            camera.y = cameraStart.y - (e.clientY - dragStart.y) / zoom;
+        });
+        canvas.addEventListener('mouseup', () => isDragging = false);
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            zoom = Math.max(0.3, Math.min(3, zoom * delta));
+            document.getElementById('zoom').value = zoom;
+            document.getElementById('zoomValue').textContent = zoom.toFixed(1) + 'x';
+        });
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        initSolarSystem();
+        animate();
+    </script>
+</body>
+</html>

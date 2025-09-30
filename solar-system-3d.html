@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Mặt Trời 3D</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: #000;
+            overflow: hidden;
+            color: white;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            max-width: 320px;
+            z-index: 100;
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            color: #ffd700;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+        }
+        .control-group input[type="range"] {
+            width: 100%;
+            accent-color: #ffd700;
+        }
+        .value { color: #ffd700; font-weight: bold; }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid #ffd700;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            margin-top: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        .checkbox {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .checkbox input { margin-right: 10px; accent-color: #ffd700; }
+        #stats {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        .stat-item {
+            margin: 5px 0;
+            font-size: 0.95em;
+        }
+        .stat-item span { color: #ffd700; font-weight: bold; }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Đang tải hệ mặt trời...</div>
+    
+    <div id="info">
+        <h1>🌌 Hệ Mặt Trời 3D</h1>
+        <div class="control-group">
+            <label>Tốc độ: <span class="value" id="speedVal">1.0x</span></label>
+            <input type="range" id="speed" min="0" max="10" step="0.5" value="1">
+        </div>
+        <div class="control-group">
+            <label>Khoảng cách: <span class="value" id="scaleVal">1.0x</span></label>
+            <input type="range" id="scale" min="0.3" max="3" step="0.1" value="1">
+        </div>
+        <div class="checkbox">
+            <input type="checkbox" id="showOrbits" checked>
+            <label>Hiển thị quỹ đạo</label>
+        </div>
+        <div class="checkbox">
+            <input type="checkbox" id="showLabels" checked>
+            <label>Hiển thị tên</label>
+        </div>
+        <div class="checkbox">
+            <input type="checkbox" id="autoRotate" checked>
+            <label>Tự động xoay</label>
+        </div>
+        <button id="resetBtn">🔄 Đặt lại góc nhìn</button>
+        <button id="pauseBtn">⏸️ Tạm dừng</button>
+    </div>
+
+    <div id="stats">
+        <div class="stat-item">FPS: <span id="fps">60</span></div>
+        <div class="stat-item">Thời gian: <span id="time">0</span> ngày</div>
+        <div class="stat-item">Hành tinh: <span id="planets">8</span></div>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,215,0,0.3); font-size: 0.85em; color: #999;">
+            💡 Mặt trời dao động quanh tâm khối lượng chung (barycenter)
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <script>
+        let scene, camera, renderer, controls;
+        let planets = [];
+        let orbits = [];
+        let labels = [];
+        let sun, sunGlow;
+        let timeSpeed = 1.0;
+        let distanceScale = 1.0;
+        let isPaused = false;
+        let simulationTime = 0;
+        let frameCount = 0;
+        let lastTime = Date.now();
+
+        // Dữ liệu hành tinh (khoảng cách AU, bán kính, khối lượng, độ nghiêng)
+        const planetData = [
+            { name: 'Sao Thủy', distance: 0.39, radius: 0.38, mass: 0.055, color: 0x8C7853, inclination: 7.0 },
+            { name: 'Sao Kim', distance: 0.72, radius: 0.95, mass: 0.815, color: 0xFFC649, inclination: 3.4 },
+            { name: 'Trái Đất', distance: 1.0, radius: 1.0, mass: 1.0, color: 0x4169E1, inclination: 0.0 },
+            { name: 'Sao Hỏa', distance: 1.52, radius: 0.53, mass: 0.107, color: 0xCD5C5C, inclination: 1.85 },
+            { name: 'Sao Mộc', distance: 5.2, radius: 11.2, mass: 317.8, color: 0xDAA520, inclination: 1.3 },
+            { name: 'Sao Thổ', distance: 9.54, radius: 9.45, mass: 95.2, color: 0xF4A460, inclination: 2.49 },
+            { name: 'Sao Thiên Vương', distance: 19.2, radius: 4.0, mass: 14.5, color: 0x4FD0E0, inclination: 0.77 },
+            { name: 'Sao Hải Vương', distance: 30.06, radius: 3.88, mass: 17.1, color: 0x4169E1, inclination: 1.77 }
+        ];
+        
+        const sunMass = 333000; // Khối lượng mặt trời (so với Trái Đất)
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.set(25, 15, 25);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 5;
+            controls.maxDistance = 200;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x222222);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 2, 1000);
+            scene.add(pointLight);
+
+            // Mặt trời
+            const sunGeometry = new THREE.SphereGeometry(2, 32, 32);
+            const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xFDB813 });
+            sun = new THREE.Mesh(sunGeometry, sunMaterial);
+            scene.add(sun);
+
+            // Glow effect cho mặt trời
+            const glowGeometry = new THREE.SphereGeometry(2.5, 32, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xFDB813,
+                transparent: true,
+                opacity: 0.3
+            });
+            sunGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+            scene.add(sunGlow);
+
+            // Tạo hành tinh
+            planetData.forEach((data, index) => {
+                createPlanet(data);
+            });
+
+            // Stars background
+            createStars();
+
+            // Event listeners
+            setupControls();
+            window.addEventListener('resize', onWindowResize);
+
+            // Hide loading
+            gsap.to('#loading', {
+                opacity: 0,
+                duration: 1,
+                onComplete: () => {
+                    document.getElementById('loading').style.display = 'none';
+                }
+            });
+
+            animate();
+        }
+
+        function createPlanet(data) {
+            const distance = data.distance * 5 * distanceScale;
+            const radius = Math.max(data.radius * 0.15, 0.15);
+            const inclination = data.inclination * Math.PI / 180;
+
+            // Planet mesh
+            const geometry = new THREE.SphereGeometry(radius, 32, 32);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: data.color,
+                metalness: 0.3,
+                roughness: 0.7
+            });
+            const planet = new THREE.Mesh(geometry, material);
+
+            // Orbit
+            const orbitGeometry = new THREE.BufferGeometry();
+            const orbitPoints = [];
+            const segments = 128;
+            
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                const x = Math.cos(angle) * distance;
+                const y = Math.sin(inclination) * Math.sin(angle) * distance;
+                const z = Math.sin(angle) * distance * Math.cos(inclination);
+                orbitPoints.push(x, y, z);
+            }
+            
+            orbitGeometry.setAttribute('position', new THREE.Float32BufferAttribute(orbitPoints, 3));
+            const orbitMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xffffff, 
+                transparent: true, 
+                opacity: 0.3 
+            });
+            const orbitLine = new THREE.Line(orbitGeometry, orbitMaterial);
+            scene.add(orbitLine);
+            orbits.push(orbitLine);
+
+            // Add to scene
+            scene.add(planet);
+            
+            planets.push({
+                mesh: planet,
+                data: data,
+                distance: distance,
+                angle: Math.random() * Math.PI * 2,
+                speed: Math.sqrt(1 / data.distance) * 0.01,
+                inclination: inclination
+            });
+        }
+
+        function createStars() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starPositions = [];
+            
+            for (let i = 0; i < 2000; i++) {
+                const x = (Math.random() - 0.5) * 500;
+                const y = (Math.random() - 0.5) * 500;
+                const z = (Math.random() - 0.5) * 500;
+                starPositions.push(x, y, z);
+            }
+            
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+            const starMaterial = new THREE.PointsMaterial({ 
+                color: 0xffffff, 
+                size: 0.5,
+                transparent: true,
+                opacity: 0.8
+            });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!isPaused) {
+                // Tính toán barycenter (tâm khối lượng của hệ)
+                let baryX = 0, baryY = 0, baryZ = 0;
+                let totalMass = sunMass;
+                
+                planets.forEach(planet => {
+                    planet.angle += planet.speed * timeSpeed;
+                    const dist = planet.distance * distanceScale;
+                    
+                    // Vị trí hành tinh tương đối với tâm hệ
+                    const px = Math.cos(planet.angle) * dist;
+                    const py = Math.sin(planet.inclination) * Math.sin(planet.angle) * dist;
+                    const pz = Math.sin(planet.angle) * dist * Math.cos(planet.inclination);
+                    
+                    planet.mesh.position.set(px, py, pz);
+                    planet.mesh.rotation.y += 0.01;
+                    
+                    // Tích lũy cho barycenter
+                    baryX += px * planet.data.mass;
+                    baryY += py * planet.data.mass;
+                    baryZ += pz * planet.data.mass;
+                    totalMass += planet.data.mass;
+                });
+                
+                // Vị trí barycenter
+                baryX /= totalMass;
+                baryY /= totalMass;
+                baryZ /= totalMass;
+                
+                // Mặt trời dao động ngược lại để giữ barycenter tại gốc tọa độ
+                // (thực tế là hệ quay quanh barycenter, không phải quanh mặt trời)
+                sun.position.set(-baryX, -baryY, -baryZ);
+                sunGlow.position.set(-baryX, -baryY, -baryZ);
+                
+                simulationTime += timeSpeed;
+            }
+
+            // Update orbits scale
+            orbits.forEach((orbit, index) => {
+                const scale = distanceScale;
+                orbit.scale.set(scale, scale, scale);
+            });
+
+            controls.update();
+            renderer.render(scene, camera);
+
+            // Update stats
+            frameCount++;
+            const now = Date.now();
+            if (now - lastTime >= 1000) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                lastTime = now;
+            }
+            document.getElementById('time').textContent = Math.floor(simulationTime);
+        }
+
+        function setupControls() {
+            document.getElementById('speed').addEventListener('input', (e) => {
+                timeSpeed = parseFloat(e.target.value);
+                document.getElementById('speedVal').textContent = timeSpeed.toFixed(1) + 'x';
+            });
+
+            document.getElementById('scale').addEventListener('input', (e) => {
+                distanceScale = parseFloat(e.target.value);
+                document.getElementById('scaleVal').textContent = distanceScale.toFixed(1) + 'x';
+            });
+
+            document.getElementById('showOrbits').addEventListener('change', (e) => {
+                orbits.forEach(orbit => orbit.visible = e.target.checked);
+            });
+
+            document.getElementById('autoRotate').addEventListener('change', (e) => {
+                controls.autoRotate = e.target.checked;
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                gsap.to(camera.position, {
+                    x: 25,
+                    y: 15,
+                    z: 25,
+                    duration: 1.5,
+                    ease: "power2.out",
+                    onUpdate: () => {
+                        camera.lookAt(0, 0, 0);
+                        controls.target.set(0, 0, 0);
+                    }
+                });
+            });
+
+            document.getElementById('pauseBtn').addEventListener('click', (e) => {
+                isPaused = !isPaused;
+                e.target.textContent = isPaused ? '▶️ Tiếp tục' : '⏸️ Tạm dừng';
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        init();
+    </script>
+</body>
+</html>
