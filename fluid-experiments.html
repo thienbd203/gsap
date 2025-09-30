@@ -170,7 +170,7 @@
             <button>Xem Experiment →</button>
         </div>
 
-        <div class="experiment-card" onclick="alert('Đang tạo experiment này...')">
+        <div class="experiment-card" onclick="location.href='lattice-boltzmann-simulation.html'">
             <div class="algorithm-badge">LATTICE BOLTZMANN</div>
             <h3 class="experiment-title">2️⃣ Lattice Boltzmann Method (D2Q9)</h3>
             <p class="experiment-desc">
@@ -178,12 +178,12 @@
                 Mỗi cell có 9 hướng vận tốc, tự nhiên xử lý ranh giới phức tạp.
             </p>
             <ul class="features">
-                <li>BGK collision operator</li>
-                <li>Bounce-back boundary</li>
-                <li>6 loại vật cản (Circle, Square, Airfoil...)</li>
-                <li>Tính Reynolds number tự động</li>
+                <li>D2Q9: 9 velocity directions</li>
+                <li>BGK collision + Streaming</li>
+                <li>6 loại vật cản (Circle, Airfoil...)</li>
+                <li>Reynolds number & tau display</li>
             </ul>
-            <button>Đang phát triển 🚧</button>
+            <button>Xem Experiment →</button>
         </div>
 
         <div class="experiment-card" onclick="location.href='sph-fluid-simulation.html'">
@@ -218,7 +218,7 @@
             <button>Xem Experiment →</button>
         </div>
 
-        <div class="experiment-card" onclick="alert('Experiment sắp ra mắt!')">
+        <div class="experiment-card" onclick="location.href='mac-grid-simulation.html'">
             <div class="algorithm-badge">MAC GRID</div>
             <h3 class="experiment-title">5️⃣ MAC Grid (Marker-and-Cell)</h3>
             <p class="experiment-desc">
@@ -226,12 +226,12 @@
                 Dùng marker particles để theo dõi bề mặt.
             </p>
             <ul class="features">
-                <li>Staggered velocity grid</li>
-                <li>Free surface tracking</li>
-                <li>Multigrid pressure solver</li>
-                <li>Level set method</li>
+                <li>Staggered velocities (u, v)</li>
+                <li>Marker particles tracking</li>
+                <li>Free surface simulation</li>
+                <li>Click để thêm nước!</li>
             </ul>
-            <button>Coming Soon ⏳</button>
+            <button>Xem Experiment →</button>
         </div>
 
         <div class="experiment-card" onclick="location.href='vorticity-confinement-simulation.html'">

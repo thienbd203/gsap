@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAC Grid Fluid Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #000428 0%, #004e92 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            max-width: 1200px;
+        }
+        h1 { text-align: center; color: #000428; margin-bottom: 5px; font-size: 2.2em; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 5px; font-size: 0.9em; }
+        .badge {
+            text-align: center;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin: 0 auto 20px;
+            display: block;
+            width: fit-content;
+        }
+        canvas {
+            border: 3px solid #000428;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto 20px;
+            cursor: pointer;
+            background: #000;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .control-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #495057;
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+        input[type="range"] { width: 100%; }
+        .value-display {
+            background: #004e92;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        button {
+            background: linear-gradient(135deg, #0f2027, #2c5364);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        button:hover { transform: translateY(-2px); }
+        .info {
+            background: #cfe2ff;
+            border-left: 4px solid #0d6efd;
+            padding: 15px;
+            border-radius: 5px;
+            color: #084298;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-align: center;
+            flex: 1;
+            min-width: 80px;
+        }
+        .stat-label { font-size: 0.7em; color: #666; display: block; margin-bottom: 5px; }
+        .stat-value { font-size: 1em; font-weight: bold; color: #004e92; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏗️ MAC Grid Simulation</h1>
+        <p class="subtitle">Marker-and-Cell | Staggered Grid | Free Surface</p>
+        <div class="badge">Staggered Velocities | Pressure at Center | Marker Particles</div>
+        
+        <canvas id="macCanvas" width="800" height="600"></canvas>
+        
+        <div class="info">
+            <strong>🎯 MAC Grid:</strong> Vận tốc u tại mặt dọc, v tại mặt ngang, áp suất ở tâm cell.
+            <strong>Marker particles</strong> theo dõi chất lỏng. Click để thêm nước!
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>💪 Gravity: <span class="value-display" id="gv">-980</span></label>
+                <input type="range" id="grav" min="-1500" max="-200" step="50" value="-980" oninput="GRAVITY=+this.value;gv.textContent=this.value">
+            </div>
+            <div class="control-group">
+                <label>💧 Particle Count: <span class="value-display" id="pv">8</span></label>
+                <input type="range" id="pcount" min="4" max="16" step="4" value="8" oninput="MARKERS_PER_CELL=+this.value;pv.textContent=this.value">
+            </div>
+            <div class="control-group">
+                <label>🎨 Cell Size: <span class="value-display" id="csv">8</span></label>
+                <input type="range" id="csize" min="6" max="12" step="2" value="8" oninput="updateGrid(+this.value)">
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button onclick="running=!running">⏯️ Pause/Play</button>
+            <button onclick="resetSim()">🔄 Reset</button>
+            <button onclick="addWaterBlock()">💧 Add Water</button>
+            <button onclick="location.href='fluid-experiments.html'">🏠 Back</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item"><span class="stat-label">FPS</span><span class="stat-value" id="fps">0</span></div>
+            <div class="stat-item"><span class="stat-label">Markers</span><span class="stat-value" id="markers">0</span></div>
+            <div class="stat-item"><span class="stat-label">Fluid Cells</span><span class="stat-value" id="fcells">0</span></div>
+            <div class="stat-item"><span class="stat-label">Grid</span><span class="stat-value" id="grid">100×75</span></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('macCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = 800, H = 600;
+        
+        let CELL_SIZE = 8;
+        let NX = Math.floor(W / CELL_SIZE);
+        let NY = Math.floor(H / CELL_SIZE);
+        let GRAVITY = -980;
+        let MARKERS_PER_CELL = 8;
+        let running = true;
+        
+        const FLUID = 1, EMPTY = 0, SOLID = 2;
+        
+        class Marker {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+        
+        class MACGrid {
+            constructor() {
+                this.reset();
+            }
+            
+            reset() {
+                this.u = Array(NX + 1).fill(0).map(() => Array(NY).fill(0));
+                this.v = Array(NX).fill(0).map(() => Array(NY + 1).fill(0));
+                this.p = Array(NX).fill(0).map(() => Array(NY).fill(0));
+                this.cellType = Array(NX).fill(0).map(() => Array(NY).fill(EMPTY));
+                this.markers = [];
+                
+                // Boundaries
+                for (let i = 0; i < NX; i++) {
+                    this.cellType[i][0] = SOLID;
+                    this.cellType[i][NY - 1] = SOLID;
+                }
+                for (let j = 0; j < NY; j++) {
+                    this.cellType[0][j] = SOLID;
+                    this.cellType[NX - 1][j] = SOLID;
+                }
+            }
+            
+            addWater(x, y, w, h) {
+                for (let j = y; j < y + h && j < NY; j++) {
+                    for (let i = x; i < x + w && i < NX; i++) {
+                        if (this.cellType[i][j] !== SOLID) {
+                            this.cellType[i][j] = FLUID;
+                            for (let k = 0; k < MARKERS_PER_CELL; k++) {
+                                this.markers.push(new Marker(
+                                    (i + Math.random()) * CELL_SIZE,
+                                    (j + Math.random()) * CELL_SIZE
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+            
+            advectMarkers(dt) {
+                for (let m of this.markers) {
+                    const i = Math.floor(m.x / CELL_SIZE);
+                    const j = Math.floor(m.y / CELL_SIZE);
+                    
+                    if (i < 0 || i >= NX - 1 || j < 0 || j >= NY - 1) continue;
+                    
+                    // Interpolate velocity
+                    const fx = (m.x / CELL_SIZE) - i;
+                    const fy = (m.y / CELL_SIZE) - j;
+                    
+                    const u = (1 - fy) * ((1 - fx) * this.u[i][j] + fx * this.u[i + 1][j]) +
+                              fy * ((1 - fx) * this.u[i][j + 1] + fx * this.u[i + 1][j + 1]);
+                    const v = (1 - fy) * ((1 - fx) * this.v[i][j] + fx * this.v[i + 1][j]) +
+                              fy * ((1 - fx) * this.v[i][j + 1] + fx * this.v[i + 1][j + 1]);
+                    
+                    m.x += u * dt;
+                    m.y += v * dt;
+                    
+                    // Clamp
+                    m.x = Math.max(CELL_SIZE, Math.min(W - CELL_SIZE, m.x));
+                    m.y = Math.max(CELL_SIZE, Math.min(H - CELL_SIZE, m.y));
+                }
+            }
+            
+            updateCellTypes() {
+                for (let i = 1; i < NX - 1; i++) {
+                    for (let j = 1; j < NY - 1; j++) {
+                        if (this.cellType[i][j] !== SOLID) {
+                            this.cellType[i][j] = EMPTY;
+                        }
+                    }
+                }
+                
+                for (let m of this.markers) {
+                    const i = Math.floor(m.x / CELL_SIZE);
+                    const j = Math.floor(m.y / CELL_SIZE);
+                    if (i > 0 && i < NX - 1 && j > 0 && j < NY - 1) {
+                        this.cellType[i][j] = FLUID;
+                    }
+                }
+            }
+            
+            applyGravity(dt) {
+                for (let i = 0; i < NX; i++) {
+                    for (let j = 0; j < NY + 1; j++) {
+                        this.v[i][j] += GRAVITY * dt / CELL_SIZE;
+                    }
+                }
+            }
+            
+            project() {
+                const iterations = 30;
+                
+                for (let iter = 0; iter < iterations; iter++) {
+                    for (let i = 1; i < NX - 1; i++) {
+                        for (let j = 1; j < NY - 1; j++) {
+                            if (this.cellType[i][j] !== FLUID) continue;
+                            
+                            const div = (this.u[i + 1][j] - this.u[i][j] + 
+                                        this.v[i][j + 1] - this.v[i][j]);
+                            
+                            const correction = -div / 4.0;
+                            this.u[i][j] += correction;
+                            this.u[i + 1][j] -= correction;
+                            this.v[i][j] += correction;
+                            this.v[i][j + 1] -= correction;
+                        }
+                    }
+                }
+            }
+            
+            step(dt) {
+                this.applyGravity(dt);
+                this.project();
+                this.advectMarkers(dt);
+                this.updateCellTypes();
+                
+                // Remove out-of-bounds markers
+                this.markers = this.markers.filter(m => 
+                    m.x > 0 && m.x < W && m.y > 0 && m.y < H
+                );
+            }
+        }
+        
+        const grid = new MACGrid();
+        
+        function addWaterBlock() {
+            const x = Math.floor(NX / 4);
+            const y = Math.floor(NY / 4);
+            grid.addWater(x, y, Math.floor(NX / 3), Math.floor(NY / 3));
+        }
+        
+        function resetSim() {
+            grid.reset();
+            addWaterBlock();
+        }
+        
+        function updateGrid(size) {
+            CELL_SIZE = size;
+            NX = Math.floor(W / CELL_SIZE);
+            NY = Math.floor(H / CELL_SIZE);
+            document.getElementById('grid').textContent = `${NX}×${NY}`;
+            document.getElementById('csv').textContent = size;
+            grid.reset();
+            addWaterBlock();
+        }
+        
+        function render() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, W, H);
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(50, 50, 50, 0.3)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= NX; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * CELL_SIZE, 0);
+                ctx.lineTo(i * CELL_SIZE, H);
+                ctx.stroke();
+            }
+            for (let j = 0; j <= NY; j++) {
+                ctx.beginPath();
+                ctx.moveTo(0, j * CELL_SIZE);
+                ctx.lineTo(W, j * CELL_SIZE);
+                ctx.stroke();
+            }
+            
+            // Draw cells
+            for (let i = 0; i < NX; i++) {
+                for (let j = 0; j < NY; j++) {
+                    if (grid.cellType[i][j] === SOLID) {
+                        ctx.fillStyle = '#444';
+                        ctx.fillRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    } else if (grid.cellType[i][j] === FLUID) {
+                        ctx.fillStyle = 'rgba(100, 150, 255, 0.2)';
+                        ctx.fillRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    }
+                }
+            }
+            
+            // Draw markers
+            ctx.fillStyle = '#4da6ff';
+            for (let m of grid.markers) {
+                ctx.beginPath();
+                ctx.arc(m.x, m.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Count fluid cells
+            let fluidCount = 0;
+            for (let i = 0; i < NX; i++) {
+                for (let j = 0; j < NY; j++) {
+                    if (grid.cellType[i][j] === FLUID) fluidCount++;
+                }
+            }
+            document.getElementById('fcells').textContent = fluidCount;
+            document.getElementById('markers').textContent = grid.markers.length;
+        }
+        
+        let lastTime = performance.now();
+        let frameCount = 0;
+        
+        function animate() {
+            if (running) {
+                grid.step(0.016);
+            }
+            render();
+            
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime - lastTime >= 1000) {
+                document.getElementById('fps').textContent = 
+                    Math.round((frameCount * 1000) / (currentTime - lastTime));
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
+            const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
+            grid.addWater(x - 2, y - 2, 5, 5);
+        });
+        
+        addWaterBlock();
+        document.getElementById('grid').textContent = `${NX}×${NY}`;
+        animate();
+    </script>
+</body>
+</html>
