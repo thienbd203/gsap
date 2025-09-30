@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex Particle Method - Fluid Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            max-width: 1200px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c5364;
+            margin-bottom: 5px;
+            font-size: 2.2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .method-badge {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin: 0 auto 20px;
+            display: block;
+            width: fit-content;
+        }
+
+        canvas {
+            border: 3px solid #2c5364;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto 20px;
+            cursor: crosshair;
+            background: #000;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #495057;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .value-display {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            border-radius: 5px;
+            color: #0c5460;
+            font-size: 0.9em;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-align: center;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .stat-label {
+            font-size: 0.75em;
+            color: #666;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .theory-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            color: #856404;
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+
+        .theory-box h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌀 Vortex Particle Method</h1>
+        <p class="subtitle">Lagrangian Approach - Each Vortex is a Particle</p>
+        <div class="method-badge">Biot-Savart Law + Vortex Dynamics</div>
+        
+        <canvas id="vortexCanvas"></canvas>
+        
+        <div class="info">
+            <strong>💡 Khác với Euler Method:</strong> Thay vì lưới cố định, mỗi xoáy là một hạt tự do di chuyển.
+            Vận tốc tại mỗi điểm được tính từ <strong>tất cả các xoáy khác</strong> bằng định luật Biot-Savart.
+            Click để tạo xoáy mới! Giữ chuột để tạo nhiều xoáy.
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>
+                    🌀 Vortex Strength: <span class="value-display" id="strengthValue">5</span>
+                </label>
+                <input type="range" id="vortexStrength" min="1" max="20" step="1" value="5">
+            </div>
+            
+            <div class="control-group">
+                <label>
+                    💨 Inlet Flow: <span class="value-display" id="flowValue">100</span>
+                </label>
+                <input type="range" id="inletFlow" min="0" max="200" step="10" value="100">
+            </div>
+            
+            <div class="control-group">
+                <label>
+                    🎯 Core Radius: <span class="value-display" id="coreValue">15</span>
+                </label>
+                <input type="range" id="coreRadius" min="5" max="40" step="5" value="15">
+            </div>
+            
+            <div class="control-group">
+                <label>
+                    ⏱️ Time Step: <span class="value-display" id="dtValue">0.5</span>
+                </label>
+                <input type="range" id="timeStep" min="0.1" max="2.0" step="0.1" value="0.5">
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button onclick="toggleSimulation()">⏯️ Pause/Resume</button>
+            <button onclick="clearVortices()">🗑️ Clear All</button>
+            <button onclick="spawnObstacle()" class="secondary">⚫ Add Obstacle</button>
+            <button onclick="location.href='fluid-experiments.html'" class="secondary">🏠 All Experiments</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">FPS</span>
+                <span class="stat-value" id="fpsValue">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Active Vortices</span>
+                <span class="stat-value" id="vortexCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Energy</span>
+                <span class="stat-value" id="energyValue">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Circulation</span>
+                <span class="stat-value" id="circulationValue">0</span>
+            </div>
+        </div>
+
+        <div class="theory-box">
+            <h3>📐 Biot-Savart Law cho Vortex 2D</h3>
+            <strong>Vận tốc tại điểm r do xoáy tại r_i:</strong><br>
+            <code style="background: #fff; padding: 5px; border-radius: 3px; display: inline-block; margin: 5px 0;">
+                u(r) = Σ (Γ_i / 2π) × (r - r_i)⊥ / |r - r_i|²
+            </code><br>
+            Trong đó: <strong>Γ</strong> = circulation (cường độ xoáy), <strong>(r - r_i)⊥</strong> = vector vuông góc
+            <br><br>
+            <strong>Vortex Core Regularization:</strong> Để tránh singularity, dùng:
+            <code style="background: #fff; padding: 5px; border-radius: 3px;">
+                u(r) = (Γ / 2π) × (r - r_i)⊥ / (|r - r_i|² + ε²)
+            </code>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('vortexCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const WIDTH = 800;
+        const HEIGHT = 500;
+        canvas.width = WIDTH;
+        canvas.height = HEIGHT;
+        
+        // Vortex particle class
+        class VortexParticle {
+            constructor(x, y, gamma) {
+                this.x = x;
+                this.y = y;
+                this.gamma = gamma; // circulation
+                this.vx = 0;
+                this.vy = 0;
+                this.age = 0;
+                this.maxAge = 500;
+            }
+            
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.age++;
+            }
+            
+            isDead() {
+                return this.age > this.maxAge || 
+                       this.x < -50 || this.x > WIDTH + 50 || 
+                       this.y < -50 || this.y > HEIGHT + 50;
+            }
+        }
+        
+        // Obstacle class
+        class Obstacle {
+            constructor(x, y, radius) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+            }
+        }
+        
+        // Simulation state
+        let vortices = [];
+        let obstacles = [];
+        let running = true;
+        let mouseDown = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        // Parameters
+        let vortexStrength = 5;
+        let inletFlow = 100;
+        let coreRadius = 15;
+        let dt = 0.5;
+        
+        // Add vortex at position
+        function addVortex(x, y, gamma) {
+            if (vortices.length < 2000) {
+                vortices.push(new VortexParticle(x, y, gamma));
+            }
+        }
+        
+        // Compute velocity induced by all vortices at point (x, y)
+        function computeVelocity(x, y) {
+            let vx = 0;
+            let vy = 0;
+            
+            // Uniform inlet flow
+            vx += inletFlow / 100;
+            
+            // Biot-Savart law for each vortex
+            for (let v of vortices) {
+                const dx = x - v.x;
+                const dy = y - v.y;
+                const r2 = dx * dx + dy * dy + coreRadius * coreRadius; // regularized
+                const factor = v.gamma / (2 * Math.PI * r2);
+                
+                // Perpendicular velocity (cross product in 2D)
+                vx -= dy * factor;
+                vy += dx * factor;
+            }
+            
+            return { vx, vy };
+        }
+        
+        // Generate vortices from obstacles (vortex shedding)
+        function generateVortexShedding() {
+            for (let obs of obstacles) {
+                // Simple vortex shedding model
+                if (Math.random() < 0.1) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const x = obs.x + Math.cos(angle) * (obs.radius + 5);
+                    const y = obs.y + Math.sin(angle) * (obs.radius + 5);
+                    const gamma = (Math.random() - 0.5) * vortexStrength * 2;
+                    addVortex(x, y, gamma);
+                }
+            }
+        }
+        
+        // Spawn vortices at inlet
+        function spawnInletVortices() {
+            if (inletFlow > 0 && Math.random() < 0.2) {
+                const y = HEIGHT / 2 + (Math.random() - 0.5) * 100;
+                const gamma = (Math.random() - 0.5) * vortexStrength;
+                addVortex(10, y, gamma);
+            }
+        }
+        
+        // Update vortex positions
+        function updateVortices() {
+            // Compute velocity for each vortex
+            for (let i = 0; i < vortices.length; i++) {
+                const v = vortices[i];
+                const vel = computeVelocity(v.x, v.y);
+                v.vx = vel.vx;
+                v.vy = vel.vy;
+            }
+            
+            // Move vortices
+            for (let v of vortices) {
+                v.update(dt);
+                
+                // Bounce off boundaries
+                if (v.y < coreRadius) {
+                    v.y = coreRadius;
+                    v.vy = Math.abs(v.vy) * 0.8;
+                }
+                if (v.y > HEIGHT - coreRadius) {
+                    v.y = HEIGHT - coreRadius;
+                    v.vy = -Math.abs(v.vy) * 0.8;
+                }
+            }
+            
+            // Vortex-obstacle interaction (simple bounce)
+            for (let v of vortices) {
+                for (let obs of obstacles) {
+                    const dx = v.x - obs.x;
+                    const dy = v.y - obs.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < obs.radius + coreRadius) {
+                        // Push vortex away
+                        const angle = Math.atan2(dy, dx);
+                        v.x = obs.x + Math.cos(angle) * (obs.radius + coreRadius);
+                        v.y = obs.y + Math.sin(angle) * (obs.radius + coreRadius);
+                        
+                        // Reflect velocity
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+                        const dot = v.vx * nx + v.vy * ny;
+                        v.vx -= 2 * dot * nx;
+                        v.vy -= 2 * dot * ny;
+                        
+                        // Flip circulation
+                        v.gamma *= -0.8;
+                    }
+                }
+            }
+            
+            // Remove dead vortices
+            vortices = vortices.filter(v => !v.isDead());
+        }
+        
+        // Render scene
+        function render() {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            
+            // Draw velocity field (optional streamlines)
+            ctx.strokeStyle = 'rgba(100, 100, 150, 0.3)';
+            ctx.lineWidth = 1;
+            const step = 30;
+            
+            for (let y = step; y < HEIGHT; y += step) {
+                for (let x = step; x < WIDTH; x += step) {
+                    const vel = computeVelocity(x, y);
+                    const mag = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+                    
+                    if (mag > 0.1) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + vel.vx * 3, y + vel.vy * 3);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            // Draw vortices
+            for (let v of vortices) {
+                const alpha = Math.max(0, 1 - v.age / v.maxAge);
+                const absGamma = Math.abs(v.gamma);
+                const radius = Math.min(8, absGamma / 2);
+                
+                // Color based on circulation sign
+                if (v.gamma > 0) {
+                    ctx.fillStyle = `rgba(255, 100, 100, ${alpha * 0.8})`;
+                } else {
+                    ctx.fillStyle = `rgba(100, 150, 255, ${alpha * 0.8})`;
+                }
+                
+                ctx.beginPath();
+                ctx.arc(v.x, v.y, radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Glow effect
+                const gradient = ctx.createRadialGradient(v.x, v.y, 0, v.x, v.y, radius * 3);
+                if (v.gamma > 0) {
+                    gradient.addColorStop(0, `rgba(255, 100, 100, ${alpha * 0.3})`);
+                } else {
+                    gradient.addColorStop(0, `rgba(100, 150, 255, ${alpha * 0.3})`);
+                }
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(v.x, v.y, radius * 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw obstacles
+            for (let obs of obstacles) {
+                ctx.fillStyle = '#444';
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+            
+            // Draw inlet region
+            ctx.fillStyle = 'rgba(100, 200, 100, 0.2)';
+            ctx.fillRect(0, 0, 20, HEIGHT);
+        }
+        
+        // Compute statistics
+        function updateStats() {
+            document.getElementById('vortexCount').textContent = vortices.length;
+            
+            let totalEnergy = 0;
+            let totalCirculation = 0;
+            
+            for (let v of vortices) {
+                const speed = Math.sqrt(v.vx * v.vx + v.vy * v.vy);
+                totalEnergy += speed * Math.abs(v.gamma);
+                totalCirculation += v.gamma;
+            }
+            
+            document.getElementById('energyValue').textContent = Math.round(totalEnergy);
+            document.getElementById('circulationValue').textContent = Math.round(totalCirculation);
+        }
+        
+        // Main animation loop
+        let lastTime = performance.now();
+        let frameCount = 0;
+        
+        function animate() {
+            if (running) {
+                spawnInletVortices();
+                generateVortexShedding();
+                updateVortices();
+            }
+            
+            render();
+            updateStats();
+            
+            // FPS counter
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime - lastTime >= 1000) {
+                const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                document.getElementById('fpsValue').textContent = fps;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Controls
+        document.getElementById('vortexStrength').addEventListener('input', (e) => {
+            vortexStrength = parseFloat(e.target.value);
+            document.getElementById('strengthValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('inletFlow').addEventListener('input', (e) => {
+            inletFlow = parseFloat(e.target.value);
+            document.getElementById('flowValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('coreRadius').addEventListener('input', (e) => {
+            coreRadius = parseFloat(e.target.value);
+            document.getElementById('coreValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('timeStep').addEventListener('input', (e) => {
+            dt = parseFloat(e.target.value);
+            document.getElementById('dtValue').textContent = e.target.value;
+        });
+        
+        function toggleSimulation() {
+            running = !running;
+        }
+        
+        function clearVortices() {
+            vortices = [];
+        }
+        
+        function spawnObstacle() {
+            const x = WIDTH / 2 + (Math.random() - 0.5) * WIDTH / 2;
+            const y = HEIGHT / 2 + (Math.random() - 0.5) * HEIGHT / 2;
+            const radius = 30 + Math.random() * 30;
+            obstacles.push(new Obstacle(x, y, radius));
+        }
+        
+        // Mouse interaction
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            
+            // Add vortex
+            const gamma = (Math.random() - 0.5) * vortexStrength * 3;
+            addVortex(mouseX, mouseY, gamma);
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            
+            if (mouseDown) {
+                const gamma = (Math.random() - 0.5) * vortexStrength * 2;
+                addVortex(mouseX, mouseY, gamma);
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            mouseDown = false;
+        });
+        
+        // Add initial obstacle
+        obstacles.push(new Obstacle(WIDTH / 2.5, HEIGHT / 2, 40));
+        
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>

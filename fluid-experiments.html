@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluid Simulation Experiments</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            color: #a0a0a0;
+        }
+
+        .experiments-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .experiment-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .experiment-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .experiment-title {
+            font-size: 1.4em;
+            margin-bottom: 10px;
+            color: #4fc3f7;
+        }
+
+        .experiment-desc {
+            font-size: 0.9em;
+            color: #b0b0b0;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .algorithm-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .features {
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .features li {
+            padding: 5px 0;
+            font-size: 0.85em;
+        }
+
+        .features li::before {
+            content: "✓ ";
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            margin-top: 15px;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .theory-section {
+            max-width: 1400px;
+            margin: 40px auto;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+        }
+
+        .theory-section h2 {
+            color: #4fc3f7;
+            margin-bottom: 20px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comparison-table th {
+            background: rgba(255, 255, 255, 0.1);
+            color: #4fc3f7;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌊 Fluid Simulation Experiments</h1>
+        <p class="subtitle">Khám phá các thuật toán CFD khác nhau với nhiều thí nghiệm</p>
+    </div>
+
+    <div class="experiments-grid">
+        <div class="experiment-card" onclick="location.href='euler-fluid-simulation.html'">
+            <div class="algorithm-badge">PROJECTION METHOD</div>
+            <h3 class="experiment-title">1️⃣ Euler Method (Pressure Projection)</h3>
+            <p class="experiment-desc">
+                Giải phương trình Euler cho chất lỏng không nhớt bằng phương pháp projection. 
+                Sử dụng Jacobi iteration để tính áp suất và đảm bảo divergence-free.
+            </p>
+            <ul class="features">
+                <li>Semi-Lagrangian advection</li>
+                <li>Poisson pressure solver</li>
+                <li>4 mức độ phân giải (Low → Ultra)</li>
+                <li>Tương tác click để di chuyển vật cản</li>
+            </ul>
+            <button>Xem Experiment →</button>
+        </div>
+
+        <div class="experiment-card" onclick="alert('Đang tạo experiment này...')">
+            <div class="algorithm-badge">LATTICE BOLTZMANN</div>
+            <h3 class="experiment-title">2️⃣ Lattice Boltzmann Method (D2Q9)</h3>
+            <p class="experiment-desc">
+                Tiếp cận từ cơ học thống kê thay vì giải phương trình vi phân trực tiếp.
+                Mỗi cell có 9 hướng vận tốc, tự nhiên xử lý ranh giới phức tạp.
+            </p>
+            <ul class="features">
+                <li>BGK collision operator</li>
+                <li>Bounce-back boundary</li>
+                <li>6 loại vật cản (Circle, Square, Airfoil...)</li>
+                <li>Tính Reynolds number tự động</li>
+            </ul>
+            <button>Đang phát triển 🚧</button>
+        </div>
+
+        <div class="experiment-card" onclick="location.href='sph-fluid-simulation.html'">
+            <div class="algorithm-badge">SPH - PARTICLE BASED</div>
+            <h3 class="experiment-title">3️⃣ Smoothed Particle Hydrodynamics</h3>
+            <p class="experiment-desc">
+                Phương pháp dựa trên hạt (Lagrangian). Mỗi hạt mang theo khối lượng, 
+                vận tốc và áp suất. Phù hợp cho mô phỏng bề mặt tự do.
+            </p>
+            <ul class="features">
+                <li>Poly6 & Spiky kernel functions</li>
+                <li>Pressure & viscosity forces</li>
+                <li>Click chuột phải để đổ nước</li>
+                <li>Tương tác vật cản thời gian thực</li>
+            </ul>
+            <button>Xem Experiment →</button>
+        </div>
+
+        <div class="experiment-card" onclick="location.href='vortex-particle-simulation.html'">
+            <div class="algorithm-badge">VORTEX METHOD</div>
+            <h3 class="experiment-title">4️⃣ Vortex Particle Method</h3>
+            <p class="experiment-desc">
+                Sử dụng các hạt vortex để mô phỏng dòng chảy. Đặc biệt tốt cho 
+                dòng chảy có độ nhớt thấp với nhiều xoáy.
+            </p>
+            <ul class="features">
+                <li>Biot-Savart law tính vận tốc</li>
+                <li>Vortex shedding từ vật cản</li>
+                <li>Click/giữ chuột để tạo xoáy</li>
+                <li>Lagrangian particles (không cần lưới)</li>
+            </ul>
+            <button>Xem Experiment →</button>
+        </div>
+
+        <div class="experiment-card" onclick="alert('Experiment sắp ra mắt!')">
+            <div class="algorithm-badge">MAC GRID</div>
+            <h3 class="experiment-title">5️⃣ MAC Grid (Marker-and-Cell)</h3>
+            <p class="experiment-desc">
+                Staggered grid với vận tốc ở mặt cell và áp suất ở tâm. 
+                Dùng marker particles để theo dõi bề mặt.
+            </p>
+            <ul class="features">
+                <li>Staggered velocity grid</li>
+                <li>Free surface tracking</li>
+                <li>Multigrid pressure solver</li>
+                <li>Level set method</li>
+            </ul>
+            <button>Coming Soon ⏳</button>
+        </div>
+
+        <div class="experiment-card" onclick="location.href='vorticity-confinement-simulation.html'">
+            <div class="algorithm-badge">VORTICITY CONFINEMENT</div>
+            <h3 class="experiment-title">6️⃣ Enhanced Vorticity Confinement</h3>
+            <p class="experiment-desc">
+                Cải tiến từ Euler method với thêm vorticity confinement để 
+                tăng cường xoáy và giảm numerical dissipation.
+            </p>
+            <ul class="features">
+                <li>Vorticity gradient computation</li>
+                <li>Confinement force (N × ω)</li>
+                <li>Xoáy sắc nét hơn nhiều lần!</li>
+                <li>So sánh với/không confinement</li>
+            </ul>
+            <button>Xem Experiment →</button>
+        </div>
+    </div>
+
+    <div class="theory-section">
+        <h2>📚 So sánh các thuật toán CFD</h2>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Thuật toán</th>
+                    <th>Loại</th>
+                    <th>Ưu điểm</th>
+                    <th>Nhược điểm</th>
+                    <th>Phù hợp cho</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Euler/Projection</strong></td>
+                    <td>Eulerian Grid</td>
+                    <td>Nhanh, ổn định, dễ implement</td>
+                    <td>Numerical diffusion cao</td>
+                    <td>Real-time graphics, games</td>
+                </tr>
+                <tr>
+                    <td><strong>Lattice Boltzmann</strong></td>
+                    <td>Eulerian Grid</td>
+                    <td>Tự nhiên parallel, xử lý boundary tốt</td>
+                    <td>Memory intensive</td>
+                    <td>Complex geometries, porous media</td>
+                </tr>
+                <tr>
+                    <td><strong>SPH</strong></td>
+                    <td>Lagrangian Particle</td>
+                    <td>Tự do bề mặt, không cần grid</td>
+                    <td>Khó ổn định, expensive neighbors search</td>
+                    <td>Splashes, breaking waves</td>
+                </tr>
+                <tr>
+                    <td><strong>Vortex Method</strong></td>
+                    <td>Lagrangian Particle</td>
+                    <td>Tốt cho inviscid flow, adaptive resolution</td>
+                    <td>Khó thêm viscosity</td>
+                    <td>Wake flows, vortex shedding</td>
+                </tr>
+                <tr>
+                    <td><strong>MAC Grid</strong></td>
+                    <td>Eulerian Staggered</td>
+                    <td>Stable pressure-velocity coupling</td>
+                    <td>Complex implementation</td>
+                    <td>Research, accurate simulations</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 style="margin-top: 40px;">🔬 Phương trình cơ bản</h2>
+        
+        <div style="margin-top: 20px; line-height: 2;">
+            <strong>1. Navier-Stokes (Incompressible):</strong><br>
+            <code style="background: rgba(255,255,255,0.1); padding: 10px; display: block; margin: 10px 0; border-radius: 5px;">
+                ∂u/∂t + (u·∇)u = -∇p/ρ + ν∇²u + f<br>
+                ∇·u = 0  (incompressibility)
+            </code>
+
+            <strong>2. Lattice Boltzmann (BGK):</strong><br>
+            <code style="background: rgba(255,255,255,0.1); padding: 10px; display: block; margin: 10px 0; border-radius: 5px;">
+                f_i(x + e_i·Δt, t + Δt) = f_i(x,t) - 1/τ (f_i - f_i^eq)
+            </code>
+
+            <strong>3. SPH Momentum:</strong><br>
+            <code style="background: rgba(255,255,255,0.1); padding: 10px; display: block; margin: 10px 0; border-radius: 5px;">
+                dv_i/dt = -Σ_j m_j (p_i + p_j)/(2ρ_i ρ_j) ∇W_ij + ν Σ_j m_j (v_j - v_i)/ρ_j ∇²W_ij
+            </code>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; padding: 20px;">
+        <p style="color: #a0a0a0;">
+            💡 Mỗi thuật toán có điểm mạnh riêng. Euler/Projection tốt cho real-time,
+            LBM tốt cho geometries phức tạp, SPH tốt cho bề mặt tự do!
+        </p>
+    </div>
+</body>
+</html>

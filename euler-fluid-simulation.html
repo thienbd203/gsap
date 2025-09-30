@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Euler Fluid Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+
+        canvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto 20px;
+            cursor: crosshair;
+            background: #000;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #495057;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .value-display {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 5px;
+            color: #0d47a1;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #666;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌊 Euler Fluid Simulation 2D</h1>
+        <p class="subtitle">Inviscid, Incompressible Fluid Flow with Circular Obstacle</p>
+        
+        <canvas id="fluidCanvas"></canvas>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>
+                    🎯 Resolution Quality: <span class="value-display" id="resolutionValue">High</span>
+                </label>
+                <input type="range" id="resolutionQuality" min="1" max="3" step="1" value="1000">
+                <div style="display: flex; justify-content: space-between; font-size: 0.75em; color: #666; margin-top: 3px;">
+                    <span>Low</span>
+                    <span>Medium</span>
+                    <span>High</span>
+                    <span>Ultra</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>
+                    Inlet Velocity: <span class="value-display" id="velocityValue">5.0</span>
+                </label>
+                <input type="range" id="inletVelocity" min="1" max="15" step="0.5" value="5">
+            </div>
+            
+            <div class="control-group">
+                <label>
+                    Obstacle Size: <span class="value-display" id="obstacleValue">40</span>
+                </label>
+                <input type="range" id="obstacleSize" min="20" max="80" step="5" value="40">
+            </div>
+            
+            <div class="control-group">
+                <label>
+                    Smoke Density: <span class="value-display" id="densityValue">50</span>
+                </label>
+                <input type="range" id="smokeDensity" min="10" max="100" step="5" value="50">
+            </div>
+            
+            <div class="control-group">
+                <label>
+                    Projection Iterations: <span class="value-display" id="iterValue">20</span>
+                </label>
+                <input type="range" id="projectionIter" min="10" max="50" step="5" value="20">
+            </div>
+        </div>
+
+        <button id="resetBtn">🔄 Reset Simulation</button>
+
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">FPS</span>
+                <span class="stat-value" id="fpsValue">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Grid Size</span>
+                <span class="stat-value" id="gridSize">128 × 80</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Time Step</span>
+                <span class="stat-value" id="timeStep">0.016s</span>
+            </div>
+        </div>
+
+        <div class="info">
+            <strong>About:</strong> This simulation uses the Euler equations for inviscid fluid flow. 
+            Smoke enters from a pipe on the left and flows around a circular obstacle. 
+            The simulation uses a projection method to enforce incompressibility (divergence-free velocity field).
+            <br><strong>Interaction:</strong> Click on the canvas to move the obstacle!
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('fluidCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Disable image smoothing for crisp pixels
+        ctx.imageSmoothingEnabled = false;
+        
+        // Simulation parameters
+        const WIDTH = 800;
+        const HEIGHT = 500;
+        let GRID_WIDTH = 200;
+        let GRID_HEIGHT = 125;
+        let CELL_SIZE = WIDTH / GRID_WIDTH;
+        
+        canvas.width = WIDTH;
+        canvas.height = HEIGHT;
+        
+        // Resolution quality presets
+        const RESOLUTION_PRESETS = [
+            { name: 'Low', width: 100, height: 62 },
+            { name: 'Medium', width: 150, height: 94 },
+            { name: 'High', width: 200, height: 125 },
+            { name: 'Ultra', width: 256, height: 160 }
+        ];
+        
+        // Fluid simulation class
+        class FluidSimulation {
+            constructor(width, height) {
+                this.width = width;
+                this.height = height;
+                this.size = width * height;
+                
+                // Velocity fields
+                this.u = new Float32Array(this.size); // x-velocity
+                this.v = new Float32Array(this.size); // y-velocity
+                this.u_prev = new Float32Array(this.size);
+                this.v_prev = new Float32Array(this.size);
+                
+                // Density field (smoke)
+                this.density = new Float32Array(this.size);
+                this.density_prev = new Float32Array(this.size);
+                
+                // Pressure and divergence for projection
+                this.pressure = new Float32Array(this.size);
+                this.divergence = new Float32Array(this.size);
+                
+                // Obstacle
+                this.obstacle = new Array(this.size).fill(false);
+                
+                // Parameters
+                this.dt = 0.016;
+                this.inletVelocity = 5.0;
+                this.smokeDensity = 50;
+                this.obstacleRadius = 40;
+                this.obstacleX = WIDTH / 3;
+                this.obstacleY = HEIGHT / 2;
+                this.projectionIterations = 20;
+                this.pipeWidth = 60;
+                this.pipeY = HEIGHT / 2;
+                
+                this.setupObstacle();
+            }
+            
+            // Convert 2D coordinates to 1D array index
+            IX(x, y) {
+                x = Math.max(0, Math.min(this.width - 1, Math.floor(x)));
+                y = Math.max(0, Math.min(this.height - 1, Math.floor(y)));
+                return x + y * this.width;
+            }
+            
+            // Setup circular obstacle
+            setupObstacle() {
+                this.obstacle.fill(false);
+                const radiusPixels = this.obstacleRadius;
+                const obstacleGridX = (this.obstacleX / WIDTH) * this.width;
+                const obstacleGridY = (this.obstacleY / HEIGHT) * this.height;
+                
+                for (let i = 0; i < this.width; i++) {
+                    for (let j = 0; j < this.height; j++) {
+                        const dx = i - obstacleGridX;
+                        const dy = j - obstacleGridY;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist <= radiusPixels / CELL_SIZE) {
+                            this.obstacle[this.IX(i, j)] = true;
+                        }
+                    }
+                }
+            }
+            
+            // Add inlet source (pipe)
+            addInletSource() {
+                const pipeGridWidth = Math.floor((this.pipeWidth / WIDTH) * this.width);
+                const pipeGridY = Math.floor((this.pipeY / HEIGHT) * this.height);
+                const pipeStartY = Math.floor(pipeGridY - pipeGridWidth / 2);
+                const pipeEndY = Math.floor(pipeGridY + pipeGridWidth / 2);
+                
+                for (let j = pipeStartY; j <= pipeEndY; j++) {
+                    if (j >= 0 && j < this.height) {
+                        for (let i = 0; i < 3; i++) {
+                            const idx = this.IX(i, j);
+                            this.u[idx] = this.inletVelocity;
+                            this.v[idx] = 0;
+                            this.density[idx] = this.smokeDensity;
+                        }
+                    }
+                }
+            }
+            
+            // Advection using semi-Lagrangian method
+            advect(field, field_prev, u, v) {
+                const dt0 = this.dt * Math.max(this.width, this.height);
+                
+                for (let j = 1; j < this.height - 1; j++) {
+                    for (let i = 1; i < this.width - 1; i++) {
+                        const idx = this.IX(i, j);
+                        
+                        if (this.obstacle[idx]) continue;
+                        
+                        // Trace particle backwards
+                        let x = i - dt0 * u[idx];
+                        let y = j - dt0 * v[idx];
+                        
+                        // Clamp to grid boundaries
+                        x = Math.max(0.5, Math.min(this.width - 1.5, x));
+                        y = Math.max(0.5, Math.min(this.height - 1.5, y));
+                        
+                        // Bilinear interpolation
+                        const i0 = Math.floor(x);
+                        const i1 = i0 + 1;
+                        const j0 = Math.floor(y);
+                        const j1 = j0 + 1;
+                        
+                        const s1 = x - i0;
+                        const s0 = 1 - s1;
+                        const t1 = y - j0;
+                        const t0 = 1 - t1;
+                        
+                        field[idx] = s0 * (t0 * field_prev[this.IX(i0, j0)] + 
+                                          t1 * field_prev[this.IX(i0, j1)]) +
+                                    s1 * (t0 * field_prev[this.IX(i1, j0)] + 
+                                          t1 * field_prev[this.IX(i1, j1)]);
+                    }
+                }
+                
+                this.setBoundary(field);
+            }
+            
+            // Project velocity field to be divergence-free (incompressibility)
+            project() {
+                const h = 1.0;
+                
+                // Calculate divergence
+                for (let j = 1; j < this.height - 1; j++) {
+                    for (let i = 1; i < this.width - 1; i++) {
+                        const idx = this.IX(i, j);
+                        
+                        if (this.obstacle[idx]) {
+                            this.divergence[idx] = 0;
+                            this.pressure[idx] = 0;
+                            continue;
+                        }
+                        
+                        this.divergence[idx] = -0.5 * h * (
+                            this.u[this.IX(i + 1, j)] - this.u[this.IX(i - 1, j)] +
+                            this.v[this.IX(i, j + 1)] - this.v[this.IX(i, j - 1)]
+                        );
+                        this.pressure[idx] = 0;
+                    }
+                }
+                
+                // Solve for pressure using Jacobi iteration
+                for (let iter = 0; iter < this.projectionIterations; iter++) {
+                    const pressure_old = new Float32Array(this.pressure);
+                    
+                    for (let j = 1; j < this.height - 1; j++) {
+                        for (let i = 1; i < this.width - 1; i++) {
+                            const idx = this.IX(i, j);
+                            
+                            if (this.obstacle[idx]) continue;
+                            
+                            this.pressure[idx] = (
+                                this.divergence[idx] +
+                                pressure_old[this.IX(i - 1, j)] +
+                                pressure_old[this.IX(i + 1, j)] +
+                                pressure_old[this.IX(i, j - 1)] +
+                                pressure_old[this.IX(i, j + 1)]
+                            ) / 4.0;
+                        }
+                    }
+                    
+                    this.setBoundary(this.pressure);
+                }
+                
+                // Subtract pressure gradient from velocity
+                for (let j = 1; j < this.height - 1; j++) {
+                    for (let i = 1; i < this.width - 1; i++) {
+                        const idx = this.IX(i, j);
+                        
+                        if (this.obstacle[idx]) {
+                            this.u[idx] = 0;
+                            this.v[idx] = 0;
+                            continue;
+                        }
+                        
+                        this.u[idx] -= 0.5 * (this.pressure[this.IX(i + 1, j)] - 
+                                              this.pressure[this.IX(i - 1, j)]) / h;
+                        this.v[idx] -= 0.5 * (this.pressure[this.IX(i, j + 1)] - 
+                                              this.pressure[this.IX(i, j - 1)]) / h;
+                    }
+                }
+                
+                this.setBoundary(this.u);
+                this.setBoundary(this.v);
+                this.applyObstacleBoundary();
+            }
+            
+            // Apply boundary conditions
+            setBoundary(field) {
+                // Left and right boundaries
+                for (let j = 0; j < this.height; j++) {
+                    field[this.IX(0, j)] = field[this.IX(1, j)];
+                    field[this.IX(this.width - 1, j)] = field[this.IX(this.width - 2, j)];
+                }
+                
+                // Top and bottom boundaries
+                for (let i = 0; i < this.width; i++) {
+                    field[this.IX(i, 0)] = field[this.IX(i, 1)];
+                    field[this.IX(i, this.height - 1)] = field[this.IX(i, this.height - 2)];
+                }
+            }
+            
+            // Apply no-slip boundary condition at obstacle
+            applyObstacleBoundary() {
+                for (let j = 1; j < this.height - 1; j++) {
+                    for (let i = 1; i < this.width - 1; i++) {
+                        const idx = this.IX(i, j);
+                        
+                        if (this.obstacle[idx]) {
+                            this.u[idx] = 0;
+                            this.v[idx] = 0;
+                            this.density[idx] = 0;
+                        }
+                    }
+                }
+            }
+            
+            // Main simulation step
+            step() {
+                // Add inlet source
+                this.addInletSource();
+                
+                // Store previous state
+                this.u_prev.set(this.u);
+                this.v_prev.set(this.v);
+                this.density_prev.set(this.density);
+                
+                // Advect velocity
+                this.advect(this.u, this.u_prev, this.u_prev, this.v_prev);
+                this.advect(this.v, this.v_prev, this.u_prev, this.v_prev);
+                
+                // Project to ensure incompressibility
+                this.project();
+                
+                // Advect density (smoke)
+                this.advect(this.density, this.density_prev, this.u, this.v);
+                
+                // Dissipate density slightly
+                for (let i = 0; i < this.size; i++) {
+                    this.density[i] *= 0.995;
+                }
+                
+                this.applyObstacleBoundary();
+            }
+            
+            // Reset simulation
+            reset() {
+                this.u.fill(0);
+                this.v.fill(0);
+                this.u_prev.fill(0);
+                this.v_prev.fill(0);
+                this.density.fill(0);
+                this.density_prev.fill(0);
+                this.pressure.fill(0);
+                this.divergence.fill(0);
+                this.setupObstacle();
+            }
+        }
+        
+        // Initialize simulation
+        let fluid = new FluidSimulation(GRID_WIDTH, GRID_HEIGHT);
+        
+        // Rendering
+        function render() {
+            // Clear canvas
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            
+            // Create image data for density visualization
+            const imageData = ctx.createImageData(WIDTH, HEIGHT);
+            const data = imageData.data;
+            
+            // Render density field with color gradient
+            for (let j = 0; j < GRID_HEIGHT; j++) {
+                for (let i = 0; i < GRID_WIDTH; i++) {
+                    const idx = fluid.IX(i, j);
+                    const d = Math.min(255, fluid.density[idx]);
+                    
+                    // Map density to color (blue to cyan to white)
+                    const r = Math.floor(d * 0.8);
+                    const g = Math.floor(d * 0.9);
+                    const b = Math.floor(Math.min(255, d * 1.2));
+                    
+                    // Fill cells
+                    const x = Math.floor(i * CELL_SIZE);
+                    const y = Math.floor(j * CELL_SIZE);
+                    const endX = Math.floor((i + 1) * CELL_SIZE);
+                    const endY = Math.floor((j + 1) * CELL_SIZE);
+                    
+                    for (let py = y; py < endY; py++) {
+                        for (let px = x; px < endX; px++) {
+                            if (px < WIDTH && py < HEIGHT) {
+                                const pixelIdx = (py * WIDTH + px) * 4;
+                                data[pixelIdx] = r;
+                                data[pixelIdx + 1] = g;
+                                data[pixelIdx + 2] = b;
+                                data[pixelIdx + 3] = 255;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            
+            // Draw obstacle
+            ctx.fillStyle = '#ff6b6b';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(fluid.obstacleX, fluid.obstacleY, fluid.obstacleRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Draw inlet pipe
+            ctx.fillStyle = 'rgba(100, 100, 100, 0.8)';
+            ctx.fillRect(0, fluid.pipeY - fluid.pipeWidth / 2, 30, fluid.pipeWidth);
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, fluid.pipeY - fluid.pipeWidth / 2, 30, fluid.pipeWidth);
+            
+            // Draw velocity vectors (optional, sample every few cells)
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+            ctx.lineWidth = 1;
+            const vectorSample = 8;
+            
+            for (let j = 0; j < GRID_HEIGHT; j += vectorSample) {
+                for (let i = 0; i < GRID_WIDTH; i += vectorSample) {
+                    const idx = fluid.IX(i, j);
+                    if (fluid.obstacle[idx]) continue;
+                    
+                    const x = i * CELL_SIZE;
+                    const y = j * CELL_SIZE;
+                    const u = fluid.u[idx] * 2;
+                    const v = fluid.v[idx] * 2;
+                    
+                    if (Math.abs(u) > 0.1 || Math.abs(v) > 0.1) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + u, y + v);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+        
+        // Animation loop with FPS counter
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let fps = 0;
+        
+        function animate() {
+            fluid.step();
+            render();
+            
+            // FPS calculation
+            frameCount++;
+            const currentTime = performance.now();
+            const elapsed = currentTime - lastTime;
+            
+            if (elapsed >= 1000) {
+                fps = Math.round((frameCount * 1000) / elapsed);
+                document.getElementById('fpsValue').textContent = fps;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Controls
+        document.getElementById('resolutionQuality').addEventListener('input', (e) => {
+            const qualityIndex = parseInt(e.target.value);
+            const preset = RESOLUTION_PRESETS[qualityIndex];
+            
+            GRID_WIDTH = preset.width;
+            GRID_HEIGHT = preset.height;
+            CELL_SIZE = WIDTH / GRID_WIDTH;
+            
+            document.getElementById('resolutionValue').textContent = preset.name;
+            document.getElementById('gridSize').textContent = `${GRID_WIDTH} × ${GRID_HEIGHT}`;
+            
+            // Recreate fluid simulation with new resolution
+            const oldParams = {
+                inletVelocity: fluid.inletVelocity,
+                smokeDensity: fluid.smokeDensity,
+                obstacleRadius: fluid.obstacleRadius,
+                obstacleX: fluid.obstacleX,
+                obstacleY: fluid.obstacleY,
+                projectionIterations: fluid.projectionIterations
+            };
+            
+            fluid = new FluidSimulation(GRID_WIDTH, GRID_HEIGHT);
+            Object.assign(fluid, oldParams);
+            fluid.setupObstacle();
+        });
+        
+        document.getElementById('inletVelocity').addEventListener('input', (e) => {
+            fluid.inletVelocity = parseFloat(e.target.value);
+            document.getElementById('velocityValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('obstacleSize').addEventListener('input', (e) => {
+            fluid.obstacleRadius = parseFloat(e.target.value);
+            document.getElementById('obstacleValue').textContent = e.target.value;
+            fluid.setupObstacle();
+        });
+        
+        document.getElementById('smokeDensity').addEventListener('input', (e) => {
+            fluid.smokeDensity = parseFloat(e.target.value);
+            document.getElementById('densityValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('projectionIter').addEventListener('input', (e) => {
+            fluid.projectionIterations = parseInt(e.target.value);
+            document.getElementById('iterValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            fluid.reset();
+        });
+        
+        // Canvas interaction - move obstacle
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            fluid.obstacleX = e.clientX - rect.left;
+            fluid.obstacleY = e.clientY - rect.top;
+            fluid.setupObstacle();
+        });
+        
+        // Update initial grid size display and resolution value
+        document.getElementById('gridSize').textContent = `${GRID_WIDTH} × ${GRID_HEIGHT}`;
+        document.getElementById('resolutionValue').textContent = RESOLUTION_PRESETS[2].name;
+        
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
